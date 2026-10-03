@@ -151,3 +151,14 @@ ai-email-intelligence-agent/
 ## License
 
 This project is provided as an educational and portfolio project.
+## Workflow Screenshots
+
+### Email Intelligence & Calendar Automation
+
+![Email Intelligence & Calendar Automation](screenshots/email-intelligence-workflow.png)
+
+### Deadline Reminder & Mobile Notification
+
+![Deadline Reminder & Mobile Notification](screenshots/deadline-reminder-workflow.png)
+
+These screenshots show the two main automation workflows running in n8n.
