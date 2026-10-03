@@ -1,0 +1,218 @@
+{
+  "name": "mail assitant agent",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -512,
+        -96
+      ],
+      "id": "22ea698f-4f55-4bf1-909e-ec7a3c6671e8",
+      "name": "Gmail Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Return ONLY valid JSON.\nDo not use markdown.\nDo not add explanations outside the JSON.\n\nUse this exact structure:\n\n{\n  \"category\": \"academic|placement|exam|assignment|event|department|faculty|internship|hackathon|fees|general|other\",\n  \"importance\": \"high|medium|low\",\n  \"summary\": \"short summary\",\n  \"action_required\": true,\n  \"action\": \"what the student needs to do\",\n  \"deadline_date\": \"\",\n  \"deadline_time\": \"\",\n  \"event_title\": \"\",\n  \"event_date\": \"\",\n  \"event_time\": \"\",\n  \"needs_reply\": false\n}\n\nRules:\n- Use YYYY-MM-DD for dates.\n- Use 24-hour HH:MM format for times.\n- If there is no deadline, use \"\".\n- If there is no deadline time, use \"\".\n- If there is no event, use \"\" for event_title, event_date, and event_time.\n- If the email contains a deadline, extract it accurately.\n- If the email contains an event date/time, extract it accurately.\n- Do not invent dates or times.\n- Use the current year when the email gives a date without a year, unless the email clearly refers to another year.\n\nEVENT TITLE RULE:\n- event_title must describe WHAT the deadline or event is for.\n- Read both the email subject and email body.\n- Use the specific activity, assignment, exam, application, registration, meeting, payment, placement activity, hackathon, or other purpose mentioned in the email.\n- Use the actual name given in the email whenever available.\n- Do not use a generic title if the email provides enough information to create a specific title.\n- Never assume a particular subject, assignment, exam, event, or activity.\n- Never use information from the examples below as information about the current email.\n- If the email does not provide a specific name, create a short descriptive title using only information actually present in the email.\n- Do not invent a name.\n\nExamples of how to create event_title:\n- If the email is about an assignment submission, create a title based on the assignment name mentioned in that email.\n- If the email is about an exam, create a title based on the exam name mentioned in that email.\n- If the email is about placement registration, create a title based on the placement activity mentioned in that email.\n- If the email is about fee payment, create a title based on the type of fee mentioned in that email.\n- If the email is about hackathon registration, create a title based on the hackathon name mentioned in that email.\n- If the email is about an application deadline, create a title based on the application mentioned in that email.\n\nThe deadline fields describe WHEN the deadline occurs.\nThe event_title describes WHAT the deadline is FOR.\n\nEmail:\n{{ $json.text }}\n\nSubject:\n{{ $json.Subject }}\n\nFrom:\n{{ $json.From }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -64,
+        -96
+      ],
+      "id": "91b0c01a-5405-47e1-9046-29bdb15e9eeb",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        160
+      ],
+      "id": "814c7706-0115-4647-94b3-7ee5f69f3134",
+      "name": "Groq Chat Model"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"category\": \"assignment\",\n  \"importance\": \"high\",\n  \"summary\": \"Assignment submission deadline is October 5.\",\n  \"action_required\": true,\n  \"action\": \"Submit the assignment.\",\n  \"deadline_date\": \"2026-10-05\",\n  \"deadline_time\": \"23:59\",\n  \"event_title\": \"Assignment Submission Deadline\",\n  \"event_date\": \"\",\n  \"event_time\": \"\",\n  \"needs_reply\": false\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        176
+      ],
+      "id": "9b40148c-ceeb-47d7-a62c-41391d947526",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_CALENDAR",
+          "mode": "list",
+          "cachedResultName": "YOUR_GOOGLE_CALENDAR"
+        },
+        "start": "={{ $json.output.deadline_date + 'T' + $json.output.deadline_time + ':00' }}",
+        "end": "={{ DateTime.fromISO($json.output.deadline_date + 'T' + $json.output.deadline_time).plus({ minutes: 30 }).toISO() }}",
+        "additionalFields": {
+          "description": "={{ $json.output.summary }}",
+          "summary": "={{ $json.output.event_title || $json.output.action }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        -112
+      ],
+      "id": "c5d48fa2-9679-4191-a977-578fee007bd2",
+      "name": "Create an event"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fd1cdaf1-296f-4353-8dad-b4442348ac8c",
+              "leftValue": "={{$json.output.deadline_date}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        304,
+        -96
+      ],
+      "id": "b0ac2ed0-d598-4486-b3b9-c5b9d49f19fa",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -288,
+        -96
+      ],
+      "id": "7db27aa3-bf74-4624-a0c5-cd35465e12a5",
+      "name": "Get a message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
